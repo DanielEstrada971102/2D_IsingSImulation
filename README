@@ -1,0 +1,52 @@
+Ejemplo de Uso:
+
+-> Para simular una malla de 30x30 particulas, con 1000 diferentes 
+   configuraciones del sistema y 900 corridas de metropolis-Hasting
+   por cada configuración iniciando en una configuración "cold"(todos
+   los espines en 1) y para valores de beta en [0, 1, 0.002] se ejecuta:
+
+	python run.py -L 30 -N 1000 -m 900 -cold 1 -bmin 0 -bmax 1 -bstep 0.002
+
+   Esto creara una carpeta con los datos de simulación en esta estructura:
+	/L_30
+	|
+	|--> /data
+	|	|->b0.000.txt
+	|	|     .
+	|	|     .
+	|	|     .
+	|	|->b0.998.txt
+	|--> /visual
+		|->/b0.000
+		|     .
+		|     .
+		|     .
+	 	|->/b0.998 
+
+   cada carpeta en /visual tiene archivos con la configuración de espines del sistema 
+   en cada paso de la simulación.
+
+   Nota: Si se quisiera correr otra simulación con el mismo L pero con algún otro parametro
+	 diferente se debe especificar con el parametro -attmp para no sobreescribir los datos.
+	 Por ejemplo, si -attmp 1 se creará /L1_30 en lugar de /L_30.
+   Nota: para un mejor rendimiento puede desactivar la visualización de progreso con el 
+	 parametro -nv (not verbose)
+
+--> una vez se tengan los archivos, se pueden generar las gráficas y mediciones del sistema con:
+	
+	python get_outputs.py -L 30 -N 1000 -Ns 100 -save 1 -gif 1 -bmin 0 -bmax 1 -bstep 0.002
+   
+    Los productos de este programa quedarán almacenados en /L_30 y los valores calculados se 
+    muestrán por terminal.
+
+Nota: Los módulos se crearon con interfaz de linea de comandos, así que si necesita una descripción 
+      parametro para correr la simualción puede ejecutar -h/--help.
+
+Nota: dependiendo de la configuración de su maquina puede ser necesario que ejecute con python3
+      en lugar de python. 
+
+dependencias: para ejecutar este código necesita instalar los paquetes de python:
+		- argparse
+		- tqdm
+		- imageio
+	      Ademá de numpy y matplotlib.

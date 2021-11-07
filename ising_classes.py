@@ -2,15 +2,18 @@
 * @file ising_classes.py                                                       *
 * @author Daniel Estrada (daniel.estrada1@udea.edu.co)                         *
 * @brief 2D Ising model classes definition                                     *
-* @version 0.1                                                                 *
-* @date 2021-10-14                                                             *                                     
+* @version 0.2                                                                 *
+* @date 2021-11-06                                                             *                                     
 *                                                                              *
 * @copyright Copyright (c) 2021                                                *
 ********************************************************************************
 """
-from numpy import random, exp, array
+from numpy import random, exp, array, reshape
 from copy import deepcopy
 import argparse
+from itertools import product
+from multiprocessing import Process, process
+from tqdm import tqdm
 
 #-------------------------------- Part Class -----------------------------------
 class Part():
@@ -84,17 +87,16 @@ class IsingLattice():
         self.L = L
         self.M = 0 
         self.E = 0 
-        
-        #the system begins in a could or hot configuration
+
+        # setting macroscopic quantities and the initial spins configuration
+        # -- the system begins in a could or hot configuration
         self.init_lattice(init_cold)
 
-        # setting macroscopic quantities with the initial spins configurations
-        self.compute_magnetization()
-        self.set_initEnergy()
 
     def init_lattice(self, cold):
         """
-        this function sets the initial spin configuration of the system. 
+        this function sets the initial spin configuration, energy and 
+        magnetization of the system. 
 
         @Parameters
         -----------
@@ -106,14 +108,32 @@ class IsingLattice():
         -
         """
         if cold:
-            self.S = array([[Part((i,j), 1, self.L) for i in range(self.L)] 
-                                                    for j in range(self.L)])
+            self.S = array([Part((i,j), 1, self.L) for i, j in 
+                            product(range(self.L), range(self.L))])
         else:
-            spin_val = random.choice([-1,1])
-            self.S = array([[Part((i,j), spin_val, self.L) for i in range(self.L)] 
-                                                    for j in range(self.L)])
+            self.S = array([Part((i,j), random.choice([-1,1]), self.L) 
+                            for i, j in product(range(self.L), range(self.L))])
 
-    def get_individualEnergy(self, part):
+        # the individual energy value for each particle is computed
+    
+        processes = [Process(target=self.update_individualEnergy, args=[part])
+                    for part in self.S]
+        
+        for process in processes:
+            process.start()    
+        
+        for process in processes:
+            process.join()
+
+        # the initial energy of the system is the sum...
+        self.E = sum([part.energyValue for part in self.S]) 
+        # the initial magnetization is the average of the particles spins
+        self.M = sum([part.spinValue for part in self.S]) / self.L ** 2
+
+    def supIndex(self, i, j):
+        return j + i * self.L
+
+    def update_individualEnergy(self, part):
         """
         computes the energy of Part according to the neighbors configuration.
 
@@ -123,53 +143,16 @@ class IsingLattice():
             ... particle whom the enegy gonna be computed
         @Retuns
         -------
-        -> int : the energy value particle
+        -
         """
+        print("updating eneregy")
         sum = 0
-        
-        for i,j in part.neighbours:    
-            sum += self.S[i][j].spinValue
 
-        return -0.5 * part.spinValue * sum
+        for i,j in part.neighbours:
+            index = self.supIndex(i, j)    
+            sum += self.S[index].spinValue
 
-    def compute_magnetization(self):
-        """
-        computes the system total magnetization. 
-
-        @Parameters
-        -----------
-        -
-        @Retuns
-        -------
-        -
-        """       
-        sum = 0
-        
-        for row in self.S:
-            for part in row:
-                sum += part.spinValue
-        
-        self.M = sum / self.L**2
-
-    def set_initEnergy(self):
-        """
-        computes the system total energy. 
-
-        @Parameters
-        -----------
-        -
-        @Retuns
-        -------
-        -
-        """
-        e = 0
-        
-        for row in self.S:
-            for part in row:
-                part.energyValue = self.get_individualEnergy(part)
-                e += part.energyValue
-        
-        self.E = e
+        part.energyValue = -0.5 * part.spinValue * sum
 
     def p_acceptance(self, dH):
         """
@@ -186,7 +169,7 @@ class IsingLattice():
         """
         return exp( -1 * self.beta * dH)
 
-    def updateLattice(self, N=1):    
+    def updateLattice(self, N=1, verbose = False):    
         """
         run N steps of the Metropilis-Hasting algorithm. L**2 runs represents
         one update of the spin system configuration. 
@@ -199,18 +182,18 @@ class IsingLattice():
         -------
         -
         """
-        for n in range(N):
+        for n in tqdm(range(N), disable= not verbose):
             change = False
 
             # a random position in the lattice is chosen
-            i, j = random.randint(0, self.L, size=(1,2))[0] 
-            S_aux = deepcopy(self.S[i][j])
+            index = random.randint(0, self.L**2) 
+            S_aux = deepcopy(self.S[index])
             # the spin is flipped
             S_aux.spinValue = -1 * S_aux.spinValue
 
             # the resulting change in energy is computed
-            e = self.get_individualEnergy(S_aux)
-            dE=  e - self.S[i][j].energyValue
+            self.update_individualEnergy(S_aux)
+            dE =  S_aux.energyValue - self.S[index].energyValue
 
             if dE >= 0 :
                 if random.uniform() >= self.p_acceptance(dE): 
@@ -221,8 +204,7 @@ class IsingLattice():
                 change = True 
             
             if change: #if the change was accepted update the system
-                self.S[i][j] = deepcopy(S_aux)
-                self.S[i][j].energyValue = e
+                self.S[index] = deepcopy(S_aux)
                 self.E += dE
 
     def get_spinMatrix(self):
@@ -236,14 +218,9 @@ class IsingLattice():
         -------
         ->  list of int lists : matrix with the system spin values
         """
-        matrix = []
+        spinValues = [part.spinValue for part in self.S]
         
-        for row in self.S:
-            spinRow = []
-            for part in row:
-                spinRow.append(part.spinValue)
-            matrix.append(spinRow)
-        return matrix
+        return reshape(spinValues, (self.L,self.L))
 
 #---------------------------------- test ---------------------------------------      
 def main(L, b, cold, m):
@@ -252,13 +229,13 @@ def main(L, b, cold, m):
     """
     test_System = IsingLattice(L, b, cold)
 
-    print(array(test_System.get_spinMatrix()))
+    print(test_System.get_spinMatrix())
     print("Total M: %.4f"%test_System.M)
     print("Total E: %.4f"%test_System.E)
 
-    test_System.updateLattice(m)
+    test_System.updateLattice(m, verbose=True)
 
-    print(array(test_System.get_spinMatrix()))
+    print(test_System.get_spinMatrix())
     print("Total M: %.4f"%test_System.M)
     print("Total E: %.4f"%test_System.E)
 

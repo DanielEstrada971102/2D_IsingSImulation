@@ -11,6 +11,7 @@
 from numpy import random, exp, array
 from copy import deepcopy
 import argparse
+from tqdm import tqdm
 
 #-------------------------------- Part Class -----------------------------------
 class Part():
@@ -186,7 +187,7 @@ class IsingLattice():
         """
         return exp( -1 * self.beta * dH)
 
-    def updateLattice(self, N=1):    
+    def updateLattice(self, N=1, verbose = False):    
         """
         run N steps of the Metropilis-Hasting algorithm. L**2 runs represents
         one update of the spin system configuration. 
@@ -199,7 +200,7 @@ class IsingLattice():
         -------
         -
         """
-        for n in range(N):
+        for n in tqdm(range(N), disable= not verbose):
             change = False
 
             # a random position in the lattice is chosen
@@ -256,7 +257,7 @@ def main(L, b, cold, m):
     print("Total M: %.4f"%test_System.M)
     print("Total E: %.4f"%test_System.E)
 
-    test_System.updateLattice(m)
+    test_System.updateLattice(m, True)
 
     print(array(test_System.get_spinMatrix()))
     print("Total M: %.4f"%test_System.M)

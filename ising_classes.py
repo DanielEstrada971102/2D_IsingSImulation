@@ -12,7 +12,6 @@ from numpy import random, exp, array, reshape
 from copy import deepcopy
 import argparse
 from itertools import product
-from multiprocessing import Process, process
 from tqdm import tqdm
 
 #-------------------------------- Part Class -----------------------------------
@@ -115,15 +114,8 @@ class IsingLattice():
                             for i, j in product(range(self.L), range(self.L))])
 
         # the individual energy value for each particle is computed
-    
-        processes = [Process(target=self.update_individualEnergy, args=[part])
-                    for part in self.S]
-        
-        for process in processes:
-            process.start()    
-        
-        for process in processes:
-            process.join()
+        for part in self.S:
+            self.update_individualEnergy(part)
 
         # the initial energy of the system is the sum...
         self.E = sum([part.energyValue for part in self.S]) 
@@ -145,7 +137,6 @@ class IsingLattice():
         -------
         -
         """
-        print("updating eneregy")
         sum = 0
 
         for i,j in part.neighbours:
@@ -178,6 +169,8 @@ class IsingLattice():
         -----------
         ->  N: int
             ... number of algorithm repetitions
+        ->  verbose : bool
+            ... if true, a progress bar is showed...
         @Retuns
         -------
         -
@@ -206,6 +199,8 @@ class IsingLattice():
             if change: #if the change was accepted update the system
                 self.S[index] = deepcopy(S_aux)
                 self.E += dE
+                self.M += self.S[index].spinValue / self.L ** 2
+
 
     def get_spinMatrix(self):
         """
@@ -216,7 +211,7 @@ class IsingLattice():
         -
         @Retuns
         -------
-        ->  list of int lists : matrix with the system spin values
+        ->  numpy array : matrix with the system spin values
         """
         spinValues = [part.spinValue for part in self.S]
         
@@ -246,7 +241,7 @@ if __name__ == "__main__":
     model class, the main function run a test of the classes funtionality")
     parser.add_argument('-L', type=int, metavar='', default=10,
                     help='lenght of the lattice')
-    parser.add_argument('-cold', type=bool, metavar='', default=True, 
+    parser.add_argument('-cold', type=int, metavar='', default=1, 
                     help='init the lattice in cold state')
     parser.add_argument('-m', type=int, metavar='', default=1, 
                     help='number of repetition to update the lattice')

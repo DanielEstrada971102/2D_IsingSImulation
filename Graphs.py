@@ -15,7 +15,7 @@ from scipy import optimize
 
 def main():
 
-    # ================== fro grapghic the time ======================
+    # ================== to grapghic the time improvement ======================
     L, Ts = loadtxt("data/tiempos_sec.txt", unpack=True, skiprows=1)
     _, Tp = loadtxt("data/tiempos_par.txt", unpack=True, skiprows=1)
 
@@ -37,9 +37,16 @@ def main():
     plt.ylabel(r"$t$" + "  " + "(h)", fontsize=12)
     plt.grid(True)
     plt.legend(loc='best')
-    plt.savefig("RunTime.png")
+    #plt.savefig("RunTime.png")
     plt.show()
 
+    # ===================== to grapghic phase trasition ========================
+
+    b , M = loadtxt("./transition_L60.txt", unpack=True, skiprows=1)
+
+    plt.plot(b, M, '.k')
+    plt.grid(True)
+    plt.show()
 
 def smooth(x, X, Y): #Función para suavizar los datos
     """

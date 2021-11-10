@@ -18,9 +18,10 @@ import matplotlib.pyplot as plt
 import imageio
 from numpy import loadtxt, array, arange, mean, log, sqrt, diff, where
 from scipy import interpolate
+from multiprocessing import Process, Queue
 
 
-def thermalization(b, dir, save=False, Nskip = 1):
+def thermalization(b, dir, save=False, Nskip = 1, parallel = (False, None)):
     """
     This function does a thermalization graph for beta = b, and return an Ntherm 
 
@@ -63,7 +64,10 @@ def thermalization(b, dir, save=False, Nskip = 1):
     else:
         plt.show()
     
-    return Ntherm
+    if parallel[0]:
+        parallel[1].put(Ntherm)
+    else:
+        return Ntherm
 
 def phase_Transition(dir, betas, Nskip=1, Ntherm=0, save=False):
     """
@@ -194,14 +198,16 @@ def compute_bc(betas, data, Max=False):
     -------
     ->  float : the critial value 
     """
-
-    if Max:
-        indx = where(data == max(data))[0][0]    
-    else:
-        indx = where(diff(data) == max(diff(data)))[0][0]
+    try:
+        if Max:
+            indx = where(data == max(data))[0][0]    
+        else:
+            indx = where(diff(data) == max(diff(data)))[0][0]
+        
+        bc = betas[indx]
     
-    bc = betas[indx]
-    
+    except:
+        bc = 0
     return bc
 
 def smooth(x, X, Y): #Función para suavizar los datos
@@ -267,19 +273,43 @@ def print_System(dir, b, N, Nskip=1, Ntherm=0):
         remove(filename)    
 
 
-def main(L, attmp,bmin, bmax, bstep, N, Nskip, save, gen_img):
+def main(L, attmp,bmin, bmax, bstep, N, Nskip, save, gen_img, parallel=False):
     dir = "L%s_%d"%(attmp, L) 
 
-    Ntherm1 = thermalization(0.4, dir, save)
-    Ntherm2 = thermalization(0.8, dir, save)
-    Ntherm = int(0.5 * (Ntherm1 + Ntherm2))
-
     betas = arange(bmin, bmax, bstep)    
-    phase_Transition(dir, betas, Nskip, Ntherm, save)
-    
-    if gen_img:
-        print_System(dir, 0.4, N, Nskip, Ntherm)
-        print_System(dir, 0.8, N, Nskip, Ntherm)
+
+    if parallel:
+        # queue = Queue()
+
+        # proc1 = Process(target=thermalization, 
+        #                 args=[0.4, dir, save, 1, (parallel, queue)]).start()
+        # proc2 = Process(target=thermalization, 
+        #                 args=[0.8, dir, save, 1, (parallel, queue)]).start()
+        
+        # proc1.join()
+        # proc2.join()
+        
+        #Ntherm = int(0.5 * (queue.get() + queue.get()))
+        phase_Transition(dir, betas, Nskip, save=save)
+        
+        if gen_img:
+            proc3 = Process(target=print_System, 
+                            args=[dir, 0.4, N, Nskip]).start()
+            proc4 = Process(target=print_System, 
+                            args=[dir, 0.8, N, Nskip]).start()
+            proc3.join()
+            proc4.join()
+
+    else:
+        #Ntherm1 = thermalization(0.4, dir, save)
+        #Ntherm2 = thermalization(0.8, dir, save)
+        #Ntherm = int(0.5 * (Ntherm1 + Ntherm2))
+
+        phase_Transition(dir, betas, Nskip, save=save)
+        
+        if gen_img:
+            print_System(dir, 0.4, N, Nskip)
+            print_System(dir, 0.8, N, Nskip)
     
 
 if __name__ == "__main__":
@@ -308,8 +338,10 @@ if __name__ == "__main__":
                     help='if 1, the graphs will be saved')
     parser.add_argument('-gif', type=int, metavar='', default=0, choices=[0,1],
                     help='if 1, a giff of the system evolution is generated')
+    parser.add_argument('-p', type=int, metavar='', default=0, choices=[0,1],
+                    help='if 1, the process will develop in parallel')
    
     args = parser.parse_args()
 
     main(args.L, args.attmp, args.bmin, args.bmax, args.bstep, args.N, 
-        args.Ns, args.save, args.gif)
+        args.Ns, args.save, args.gif, args.p)

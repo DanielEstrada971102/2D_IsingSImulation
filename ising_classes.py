@@ -123,6 +123,20 @@ class IsingLattice():
         self.M = sum([part.spinValue for part in self.S]) / self.L ** 2
 
     def supIndex(self, i, j):
+        """
+        This is an auxiliary function to access the data thinking as if it 
+        would be a matrix
+        
+        @Parameters
+        -----------
+        ->  i : int
+            ... row position
+        ->  j : int
+            ... column position
+        @Retuns
+        -------
+        ->  int : the corresponding index for a 1d data list
+        """
         return j + i * self.L
 
     def update_individualEnergy(self, part):
@@ -199,8 +213,7 @@ class IsingLattice():
             if change: #if the change was accepted update the system
                 self.S[index] = deepcopy(S_aux)
                 self.E += dE
-                self.M += self.S[index].spinValue / self.L ** 2
-
+                self.M = sum([part.spinValue for part in self.S])/ (self.L*self.L)
 
     def get_spinMatrix(self):
         """

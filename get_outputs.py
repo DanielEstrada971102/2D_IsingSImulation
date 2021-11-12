@@ -10,7 +10,7 @@
 """
 import matplotlib.pyplot as plt
 from numpy import loadtxt, std, where, diff
-from scipy import optimize
+from scipy import optimize, interpolate
 
 def graphic_times():
     """
@@ -44,16 +44,18 @@ def graphic_times():
     print("Obs.Speedup is ",spUP, "+-", err_spUP)
 
     # the graph is produced
-    plt.plot(L, Ts, 'or')
-    plt.plot(l, Ts_s, '--r', label="Serial")#, label=r"$%.2e + %.2e x^2$"%(popt_s[0], popt_s[1])) 
-    plt.plot(L, Tp, 'ob')
-    plt.plot(l, Tp_s, '--b', label="Paralelo")#, label=r"$%.2e + %.2e x^2$"%(popt_p[0], popt_p[1]))
-    plt.title(r"Tiempo de ejeción $vs$ L", fontsize=15)
-    plt.xlabel(r"$L$", fontsize=12)
-    plt.ylabel(r"$t$" + "  " + "(h)", fontsize=12)
-    plt.grid(True)
-    plt.legend(loc='best')
-    plt.savefig("RunTime.png")
+    fig, ax = plt.subplots()
+    ax.plot(L, Ts, 'or')
+    ax.plot(l, Ts_s, '--r', label="Serial")#, label=r"$%.2e + %.2e x^2$"%(popt_s[0], popt_s[1])) 
+    ax.plot(L, Tp, 'ob')
+    ax.plot(l, Tp_s, '--b', label="Paralelo")#, label=r"$%.2e + %.2e x^2$"%(popt_p[0], popt_p[1]))
+    ax.set_title(r"Tiempo de ejeción $vs$ L", fontsize=15)
+    ax.set_xlabel(r"$L$", fontsize=12)
+    ax.set_ylabel(r"$t$" + "  " + "(h)", fontsize=12)
+    ax.grid(True)
+    ax.legend(loc='best')
+    fig.savefig("RunTime.png")
+    plt.close()
 
     
 
@@ -77,6 +79,21 @@ def compute_bc(L):
     bc =  b[indx]
 
     print("for L=", L, " b_c is ", bc)
+
+    f = interpolate.interp1d(b,M, kind = 'cubic')
+    Ms = f(b)
+
+
+    # the graph is produced
+    fig, ax = plt.subplots()
+    ax.plot(b, M, 'ob')
+    ax.plot(b, Ms, '--k')
+    ax.set_title(r"Transición de fase para L = %d"%L, fontsize=15)
+    ax.set_xlabel(r"$\beta$", fontsize=12)
+    ax.set_ylabel(r"$<M>$", fontsize=12)
+    ax.grid(True)
+    fig.savefig("transicion_L%d.png"%L)
+    plt.close()
 
 
 def smooth(x, X, Y): #Función para suavizar los datos
